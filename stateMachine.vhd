@@ -46,17 +46,17 @@ END PROCESS;
       WHEN s1 =>
         current_state <= "001"; student_id <= "0001"; fsm_valid <= '1';
       WHEN s2 =>
-        current_state <= "010"; student_id <= "0011"; fsm_valid <= '1';
+        current_state <= "010"; student_id <= "0010"; fsm_valid <= '1';
       WHEN s3 =>
-        current_state <= "011"; student_id <= "0010"; fsm_valid <= '1';
+        current_state <= "011"; student_id <= "0011"; fsm_valid <= '1';
       WHEN s4 =>
-        current_state <= "100"; student_id <= "0111"; fsm_valid <= '1';
+        current_state <= "100"; student_id <= "0100"; fsm_valid <= '1';
       WHEN s5 =>
-        current_state <= "101"; student_id <= "0100"; fsm_valid <= '1';
+        current_state <= "101"; student_id <= "0101"; fsm_valid <= '1';
       WHEN s6 =>
-        current_state <= "110"; student_id <= "0001"; fsm_valid <= '1';
+        current_state <= "110"; student_id <= "0110"; fsm_valid <= '1';
       WHEN s7 =>
-        current_state <= "111"; student_id <= "1001"; fsm_valid <= '1';
+        current_state <= "111"; student_id <= "0111"; fsm_valid <= '1';
     END CASE;
   END PROCESS;
 

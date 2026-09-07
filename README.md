@@ -1,10 +1,10 @@
 # 8-Bit CPU Design in VHDL
 
-A simple 8-bit central processing unit designed in VHDL using Intel/Altera Quartus.
+An 8-bit central processing unit designed in VHDL using Intel/Altera Quartus.
 
-The system combines an arithmetic logic unit (ALU), two 8-bit input registers, an FSM-based control unit, a 3-to-8 opcode decoder, and seven-segment display logic into a complete synchronous digital system.
+The system integrates an arithmetic logic unit (ALU), two 8-bit input registers, an FSM-based control unit, a 3-to-8 opcode decoder, and seven-segment display logic into a complete synchronous digital system.
 
-This project was originally developed for a Digital Systems course and has since been cleaned and documented as a portfolio project.
+This project was originally developed for a university Digital Systems course and has since been cleaned and documented as an engineering portfolio project.
 
 ---
 
@@ -12,43 +12,282 @@ This project was originally developed for a Digital Systems course and has since
 
 The CPU operates on two 8-bit inputs, `A` and `B`.
 
-An 8-state finite state machine acts as the control sequencer. Its 3-bit state is passed to a 3-to-8 decoder, which generates a one-hot opcode used by the ALU to select one of eight arithmetic or logical operations.
+The inputs are first stored in two 8-bit registers before being passed to the ALU.
 
-The result is divided into two 4-bit values and routed to seven-segment display logic.
+An 8-state finite state machine acts as the control sequencer. The FSM generates a 3-bit `current_state` signal that is passed to a 3-to-8 decoder.
 
-### System Flow
+The decoder converts the FSM state into an 8-bit one-hot opcode. Each opcode selects one of eight arithmetic or logical operations performed by the ALU.
+
+The ALU result is divided into two 4-bit values and routed to seven-segment display logic.
+
+---
+
+## System Architecture
 
 ```text
-                        +----------------+
-                        |      FSM       |
-                        |  Control Unit  |
-                        +-------+--------+
-                                |
-                         current_state
-                                |
-                                v
-                        +----------------+
-                        | 3-to-8 Decoder |
-                        +-------+--------+
-                                |
-                             opcode
-                                |
-             +------------------+------------------+
-             |                                     |
-             v                                     v
-      +-------------+                       +-------------+
-A --->| 8-bit Reg A |----+             +----| 8-bit Reg B |<--- B
-      +-------------+    |             |    +-------------+
-                         v             v
-                       +-----------------+
-                       |      ALU        |
-                       |     8-bit       |
-                       +--------+--------+
-                                |
-                              Result
-                                |
-                                v
-                       +------------------+
-                       | Seven-Segment    |
-                       | Display Logic    |
-                       +------------------+
+                         +------------------+
+                         |       FSM        |
+                         |   Control Unit   |
+                         +--------+---------+
+                                  |
+                           current_state
+                                  |
+                                  v
+                         +------------------+
+                         |  3-to-8 Decoder  |
+                         +--------+---------+
+                                  |
+                               opcode
+                                  |
+                                  v
+ A --------> +-------------+   +-----------------+   +-------------+ <-------- B
+             | 8-bit Reg A |-->|                 |<--| 8-bit Reg B |
+             +-------------+   |    8-bit ALU    |   +-------------+
+                               |                 |
+                               +--------+--------+
+                                        |
+                                     Result
+                                        |
+                                        v
+                               +------------------+
+                               |  Seven-Segment   |
+                               |  Display Logic   |
+                               +------------------+
+```
+
+---
+
+## ALU Operations
+
+The ALU uses an 8-bit one-hot opcode to select its operation.
+
+| Opcode | Operation |
+|---|---|
+| `00000001` | Addition: `A + B` |
+| `00000010` | Subtraction: `A - B` |
+| `00000100` | Bitwise NOT A |
+| `00001000` | Bitwise NAND |
+| `00010000` | Bitwise NOR |
+| `00100000` | Bitwise AND |
+| `01000000` | Bitwise XOR |
+| `10000000` | Bitwise OR |
+
+---
+
+## Main Components
+
+### `ALU_unit.vhd`
+
+Implements the processor's arithmetic and logical operations.
+
+The ALU receives two registered 8-bit operands and an 8-bit opcode generated by the control unit.
+
+The result is divided into upper and lower 4-bit values for the display subsystem.
+
+---
+
+### `reg_unit.vhd`
+
+Reusable 8-bit register used for temporary operand storage.
+
+Two instances are used in the CPU, one for input `A` and one for input `B`.
+
+The registers capture their input values on the rising edge of the system clock and include an active-low reset.
+
+---
+
+### `stateMachine.vhd`
+
+Implements the processor's 8-state finite state machine.
+
+The FSM acts as the control sequencer and cycles through states:
+
+```text
+000 -> 001 -> 010 -> 011 -> 100 -> 101 -> 110 -> 111
+```
+
+Its 3-bit state output is sent to the opcode decoder.
+
+The FSM also supports an enable input that allows the current state to be held when required.
+
+---
+
+### `decoder3to8.vhd`
+
+Converts the FSM's 3-bit state into an 8-bit one-hot opcode.
+
+Each decoder output corresponds to one ALU operation.
+
+For example:
+
+```text
+State 000 -> 00000001 -> ADD
+State 001 -> 00000010 -> SUB
+State 010 -> 00000100 -> NOT
+...
+State 111 -> 10000000 -> OR
+```
+
+---
+
+### `sseg.vhd`
+
+Implements seven-segment display decoding.
+
+The display logic converts CPU output values into the appropriate segment patterns for FPGA board output.
+
+---
+
+### `mainCPU.bdf`
+
+Top-level Quartus block diagram that connects the registers, FSM, decoder, ALU, and seven-segment display components into the complete CPU architecture.
+
+---
+
+## Control Flow
+
+The processor control path follows the sequence:
+
+```text
+Clock
+  |
+  v
+FSM
+  |
+  | current_state
+  v
+3-to-8 Decoder
+  |
+  | opcode
+  v
+ALU Operation
+```
+
+As the FSM advances through its eight states, the decoder generates a different opcode and the ALU performs the corresponding operation.
+
+---
+
+## Datapath
+
+The CPU datapath follows:
+
+```text
+A -> Register A --+
+                  |
+                  +--> ALU --> Result --> Display Logic
+                  |
+B -> Register B --+
+```
+
+The input registers provide synchronized operands to the ALU, allowing the processor to operate as a clocked digital system.
+
+---
+
+## Tools & Technologies
+
+- VHDL
+- Intel / Altera Quartus
+- FPGA design
+- Digital logic design
+- Finite State Machines
+- Arithmetic Logic Units
+- Sequential logic
+- Combinational logic
+- Register-based datapaths
+- Computer architecture
+
+---
+
+## Current Status
+
+The cleaned VHDL design currently:
+
+- Compiles successfully in Quartus with **0 compilation errors**
+- Implements all eight ALU operations
+- Implements an 8-state FSM control sequencer
+- Generates ALU opcodes using a 3-to-8 decoder
+- Stores both 8-bit operands using dedicated registers
+- Includes seven-segment display output logic
+- Integrates all major components in a top-level Quartus block diagram
+
+The current version provides a stable foundation for further simulation, verification, and documentation.
+
+---
+
+## Planned Improvements
+
+- [ ] Add automated VHDL testbenches
+- [ ] Add ALU simulation waveforms
+- [ ] Verify full CPU timing behavior
+- [ ] Add a high-quality CPU architecture diagram
+- [ ] Add screenshots of the Quartus top-level schematic
+- [ ] Add FPGA implementation images
+- [ ] Add a full technical report written in LaTeX
+- [ ] Add additional source-code documentation
+- [ ] Improve repository file organization
+
+---
+
+## Project Background
+
+This project was originally developed as part of a university Digital Systems laboratory focused on CPU architecture, VHDL, and FPGA design.
+
+The objective was to design and integrate the fundamental components of a simple processor, including:
+
+- Register storage
+- An arithmetic logic unit
+- A finite state machine
+- Opcode decoding
+- Output display logic
+
+The original course implementation has since been revisited and cleaned for use as an engineering portfolio project.
+
+The goal of the portfolio version is to preserve the original hardware architecture while improving code readability, documentation, verification, and presentation.
+
+---
+
+## Repository Structure
+
+The repository currently contains the original Quartus project files and cleaned VHDL source code.
+
+A future revision will organize the project into dedicated directories for source code, simulations, documentation, figures, and the LaTeX technical report.
+
+---
+
+## Future Repository Structure
+
+```text
+8-bit-vhdl-cpu/
+|
+|-- src/
+|   |-- ALU_unit.vhd
+|   |-- reg_unit.vhd
+|   |-- stateMachine.vhd
+|   |-- decoder3to8.vhd
+|   `-- sseg.vhd
+|
+|-- simulation/
+|   |-- testbenches/
+|   `-- waveforms/
+|
+|-- docs/
+|   |-- figures/
+|   `-- cpu-schematic.png
+|
+|-- report/
+|   |-- main.tex
+|   `-- report.pdf
+|
+|-- quartus/
+|   |-- mainCPU.bdf
+|   |-- mainCPU.qpf
+|   `-- mainCPU.qsf
+|
+`-- README.md
+```
+
+---
+
+## License
+
+This project is currently provided as a portfolio and educational reference project.
